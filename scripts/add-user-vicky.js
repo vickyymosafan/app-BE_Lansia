@@ -22,7 +22,7 @@ async function addUserVicky() {
     // User data
     const userData = {
       username: 'vicky1',
-      password: 'vicky1234',
+      password: 'vicky123',
       role: 'kader', // Using 'kader' since schema only supports 'admin' and 'kader'
       posyandu_name: 'Posyandu Vicky Test',
       pin: '654321'
