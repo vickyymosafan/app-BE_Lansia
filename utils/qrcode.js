@@ -152,12 +152,18 @@ const createPrintableQR = async (profile) => {
     return {
       success: true,
       data: {
+        qr_code: generateQRId(profile.id),
         qrCode: qrCodeResult.data,
         profile: {
           id: profile.id,
           nama: profile.nama,
           usia: profile.usia,
-          qr_id: generateQRId(profile.id)
+          alamat: profile.alamat,
+          no_telepon: profile.no_telepon,
+          kontak_darurat: profile.kontak_darurat,
+          riwayat_medis: profile.riwayat_medis,
+          obat_rutin: profile.obat_rutin,
+          alergi: profile.alergi
         },
         generatedAt: new Date().toISOString()
       }

@@ -361,6 +361,145 @@ router.get('/:id/qr', authenticate, validateId, async (req, res) => {
   }
 });
 
+// @route   GET /api/profiles/:id/charts
+// @desc    Get chart data for profile
+// @access  Private
+router.get('/:id/charts', authenticate, validateId, async (req, res) => {
+  try {
+    const profileId = req.params.id;
+    const period = req.query.period || '3m'; // Default to 3 months
+
+    // Verify profile exists
+    const profileResult = await getOne(
+      'SELECT id, nama, usia FROM profiles WHERE id = ?',
+      [profileId]
+    );
+
+    if (!profileResult.success) {
+      return res.status(404).json({
+        success: false,
+        message: 'Profile not found'
+      });
+    }
+
+    // Calculate date range based on period
+    let dateFilter = '';
+    switch (period) {
+      case '1m':
+        dateFilter = 'tanggal >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)';
+        break;
+      case '3m':
+        dateFilter = 'tanggal >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)';
+        break;
+      case '6m':
+        dateFilter = 'tanggal >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)';
+        break;
+      case '1y':
+        dateFilter = 'tanggal >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)';
+        break;
+      default:
+        dateFilter = 'tanggal >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)';
+    }
+
+    // Get checkup data for charts
+    const checkupsResult = await getMany(`
+      SELECT
+        tanggal,
+        gula_darah,
+        tekanan_darah,
+        berat_badan,
+        tinggi_badan,
+        DATE_FORMAT(tanggal, '%d/%m') as formatted_date,
+        DATE_FORMAT(tanggal, '%Y-%m') as month_year
+      FROM checkups
+      WHERE profile_id = ? AND ${dateFilter}
+      ORDER BY tanggal ASC
+    `, [profileId]);
+
+    if (!checkupsResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch checkup data'
+      });
+    }
+
+    const checkups = checkupsResult.data;
+
+    // Process data for charts
+    const labels = checkups.map(c => c.formatted_date);
+    const bloodSugarData = checkups.map(c => c.gula_darah);
+
+    // Parse blood pressure data
+    const bloodPressureData = checkups.map(c => {
+      if (c.tekanan_darah && typeof c.tekanan_darah === 'string') {
+        const parts = c.tekanan_darah.split('/');
+        return parts.length === 2 ? parseInt(parts[0]) : 0;
+      }
+      return 0;
+    });
+
+    // Calculate BMI data
+    const bmiData = checkups.map(c => {
+      if (c.berat_badan && c.tinggi_badan && c.berat_badan > 0 && c.tinggi_badan > 0) {
+        const heightInMeters = c.tinggi_badan / 100;
+        return parseFloat((c.berat_badan / (heightInMeters * heightInMeters)).toFixed(1));
+      }
+      return 0;
+    });
+
+    // Get monthly stats
+    const monthlyStatsResult = await getMany(`
+      SELECT
+        DATE_FORMAT(tanggal, '%m/%y') as month_label,
+        COUNT(*) as checkup_count
+      FROM checkups
+      WHERE profile_id = ? AND ${dateFilter}
+      GROUP BY DATE_FORMAT(tanggal, '%Y-%m')
+      ORDER BY DATE_FORMAT(tanggal, '%Y-%m') ASC
+    `, [profileId]);
+
+    const monthlyStats = monthlyStatsResult.success ? monthlyStatsResult.data : [];
+
+    res.json({
+      success: true,
+      data: {
+        profile: profileResult.data,
+        bloodSugarTrend: {
+          labels: labels,
+          datasets: [{
+            data: bloodSugarData.length > 0 ? bloodSugarData : [0]
+          }]
+        },
+        bloodPressureTrend: {
+          labels: labels,
+          datasets: [{
+            data: bloodPressureData.length > 0 ? bloodPressureData : [0]
+          }]
+        },
+        bmiTrend: {
+          labels: labels,
+          datasets: [{
+            data: bmiData.length > 0 ? bmiData : [0]
+          }]
+        },
+        monthlyStats: {
+          labels: monthlyStats.map(m => m.month_label),
+          datasets: [{
+            data: monthlyStats.map(m => m.checkup_count)
+          }]
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Charts generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate charts data'
+    });
+  }
+});
+
 // @route   POST /api/profiles/scan
 // @desc    Get profile by QR code scan
 // @access  Private

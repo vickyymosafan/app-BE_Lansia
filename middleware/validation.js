@@ -136,15 +136,30 @@ const validateCheckupCreation = [
   body('profile_id')
     .isInt({ min: 1 })
     .withMessage('Valid profile ID is required'),
-  
+
   body('tekanan_darah')
     .matches(/^\d{2,3}\/\d{2,3}$/)
     .withMessage('Blood pressure must be in format XXX/YY (e.g., 120/80)'),
-  
+
   body('gula_darah')
     .isInt({ min: 50, max: 500 })
     .withMessage('Blood sugar must be between 50 and 500 mg/dL'),
-  
+
+  body('berat_badan')
+    .optional()
+    .isFloat({ min: 20, max: 300 })
+    .withMessage('Weight must be between 20 and 300 kg'),
+
+  body('tinggi_badan')
+    .optional()
+    .isFloat({ min: 100, max: 250 })
+    .withMessage('Height must be between 100 and 250 cm'),
+
+  body('keluhan')
+    .optional()
+    .isLength({ max: 1000 })
+    .withMessage('Complaints must not exceed 1000 characters'),
+
   body('tanggal')
     .isISO8601()
     .withMessage('Date must be in valid ISO format (YYYY-MM-DD)')
@@ -156,7 +171,7 @@ const validateCheckupCreation = [
       }
       return true;
     }),
-  
+
   body('catatan')
     .optional()
     .isLength({ max: 500 })

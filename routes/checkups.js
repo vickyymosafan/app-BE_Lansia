@@ -121,7 +121,16 @@ router.get('/:id', authenticate, validateId, async (req, res) => {
 // @access  Private
 router.post('/', authenticate, validateCheckupCreation, async (req, res) => {
   try {
-    const { profile_id, tekanan_darah, gula_darah, tanggal, catatan } = req.body;
+    const {
+      profile_id,
+      tekanan_darah,
+      gula_darah,
+      berat_badan,
+      tinggi_badan,
+      keluhan,
+      tanggal,
+      catatan
+    } = req.body;
 
     // Verify profile exists
     const profileResult = await getOne(
@@ -141,6 +150,9 @@ router.post('/', authenticate, validateCheckupCreation, async (req, res) => {
       profile_id,
       tekanan_darah,
       gula_darah,
+      berat_badan: berat_badan || null,
+      tinggi_badan: tinggi_badan || null,
+      keluhan: keluhan || null,
       tanggal,
       catatan: catatan || null
     };
@@ -186,7 +198,7 @@ router.put('/:id', authenticate, validateId, async (req, res) => {
     const updateData = {};
 
     // Only include provided fields
-    const allowedFields = ['tekanan_darah', 'gula_darah', 'tanggal', 'catatan'];
+    const allowedFields = ['tekanan_darah', 'gula_darah', 'berat_badan', 'tinggi_badan', 'keluhan', 'tanggal', 'catatan'];
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
         updateData[field] = req.body[field];
